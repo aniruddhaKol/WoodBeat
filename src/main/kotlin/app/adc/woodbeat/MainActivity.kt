@@ -264,16 +264,17 @@ class MainActivity : Activity() {
     /** Slim now-playing bar shown on the EQ / Library pages. */
     private fun buildStrip(): View {
         val row = hbox()
-        stripTitle = text(14f, Colors.LCD, mono = true).apply {
+        // Single dark LCD strip holding the title and the three buttons.
+        stripTitle = text(14f, Colors.LCD, mono = true).lcdSize(14f).apply {
             ellipsize = TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isSelected = true
+            gravity = Gravity.CENTER_VERTICAL
         }
-        val lcd = framed(stripTitle.apply { gravity = Gravity.CENTER_VERTICAL }, raised = false, padDp = 10f)
-        row.addView(lcd, lp(0, dpi(44f), 1f))
+        row.addView(stripTitle, lp(0, dpi(40f), 1f).margins(this, 4f, 0f, 6f, 0f))
         val prev = WoodButton(this, R.drawable.glyph_previous).apply { setOnClickListener { controller?.seekToPreviousMediaItem() } }
         stripPlay = WoodButton(this, R.drawable.glyph_play).apply { setOnClickListener { playPause() } }
         val next = WoodButton(this, R.drawable.glyph_next).apply { setOnClickListener { controller?.seekToNextMediaItem() } }
-        for (b in listOf(prev, stripPlay, next)) row.addView(b, lp(dpi(44f), dpi(44f)).margins(this, 4f))
-        return framed(row, raised = true, padDp = 8f)
+        for (b in listOf(prev, stripPlay, next)) row.addView(b, lp(dpi(40f), dpi(40f)).margins(this, 3f, 0f, 3f, 0f))
+        return framed(row, raised = false, padDp = 9f)
     }
 
     private fun updateStrip() {

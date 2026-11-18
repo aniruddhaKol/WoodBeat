@@ -39,18 +39,17 @@ class LibraryPage(private val a: MainActivity) {
     init { build() }
 
     private fun build() {
+        // Single frame: the back / title / actions row sits on the wood (like the tabs), the list in one dark frame.
         view.setPadding(a.dpi(8f), 0, a.dpi(8f), a.dpi(4f))
-        val body = a.vbox()
         back.setOnClickListener { back() }
         nav.addView(back, lp(WRAP, a.dpi(34f)))
         nav.addView(heading, lp(0, WRAP, 1f).margins(a, 10f, 0f, 6f, 0f))
         nav.addView(actions, lp(WRAP, WRAP))
-        body.addView(nav, lp(MATCH, WRAP).margins(a, 0f, 0f, 0f, 8f))
+        view.addView(nav, lp(MATCH, WRAP).margins(a, 3f, 0f, 3f, 8f))
         list.layoutManager = LinearLayoutManager(a)
         list.adapter = adapter
         list.addItemDecoration(RowLines(a))
-        body.addView(a.framed(list, raised = false, padDp = 9f), lp(MATCH, 0, 1f))
-        view.addView(a.framed(body, raised = true, padDp = 14f), lp(MATCH, 0, 1f))
+        view.addView(a.framed(list, raised = false, padDp = 9f), lp(MATCH, 0, 1f))
         stack += Screen.Root
         render()
     }

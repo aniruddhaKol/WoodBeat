@@ -2,7 +2,7 @@
 
 Android music player and internet radio with a hand-crafted wooden look, in the spirit of the classic desktop players — by **Aniruddha DuttaChowdhury**.
 
-Version **0.1.1** (build 24). Package: `app.adc.woodbeat`. Android 8.0+ (phones and tablets).
+Version **0.1.2** (build 27). Package: `app.adc.woodbeat`. Android 8.0+ (phones and tablets).
 
 [Download APK](https://github.com/aniruddhaKol/WoodBeat/releases/latest)
 

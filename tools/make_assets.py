@@ -45,6 +45,32 @@ def key_black(im, lo=12, hi=48):
     return Image.fromarray(a.astype(np.uint8))
 
 
+def round_corners(im, r, keep_from=None):
+    """Rebuilds square frame corners as rounded ones: the straight rim profile next to each corner is swept
+    around a quarter circle (blending the top and side lighting), so the bevel follows the curve.
+    keep_from: rim depth (px) from which the original pixels are kept (inner bead / groove already rounded)."""
+    a = np.array(im.convert("RGBA")).astype(np.float32)
+    for _ in range(4):                       # do top-left, then rotate the image and repeat for each corner
+        top = a[:r + 1, r + 2]               # rim profile going down from the top edge, just right of the corner
+        left = a[r + 2, :r + 1]              # rim profile going right from the left edge, just below the corner
+        ys, xs = np.mgrid[0:r, 0:r].astype(np.float32)
+        dx, dy = r - xs - 0.5, r - ys - 0.5
+        d = np.sqrt(dx * dx + dy * dy)
+        depth = np.clip(r - d, 0, r - 1.001)
+        i0 = depth.astype(int); f = (depth - i0)[..., None]
+        prof_top = top[i0] * (1 - f) + top[i0 + 1] * f
+        prof_left = left[i0] * (1 - f) + left[i0 + 1] * f
+        t = (dy / (dx + dy))[..., None]      # 1 = straight above the corner centre (top lighting), 0 = beside it
+        px = prof_top * t + prof_left * (1 - t)
+        px[..., 3] *= np.clip(r - d + 0.5, 0, 1)   # anti-aliased outer edge
+        if keep_from is not None:            # fade back to the original pixels deeper than the outer rim
+            w = np.clip((depth - keep_from) / 6, 0, 1)[..., None]
+            px = px * (1 - w) + a[:r, :r] * w
+        a[:r, :r] = px
+        a = np.rot90(a).copy()
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+
+
 def feather(im, px):
     """Fades the outer px of an image to transparent."""
     w, h = im.size
@@ -59,7 +85,9 @@ def feather(im, px):
 # Backgrounds / frames
 save(Image.open(IMG / "1_new.png").convert("RGB").resize((512, 512), Image.LANCZOS), "wood_tile")
 save(Image.open(IMG / "2.png").convert("RGBA").resize((512, 512), Image.LANCZOS), "frame_raised")
-save(Image.open(IMG / "4_1.png").convert("RGBA").resize((512, 512), Image.LANCZOS), "frame_inset")
+# Inset frame: its outer corners are square in the source art; rebuild them rounded (96 px of 1254, inside the
+# 40 px slice used at 512) and keep the already-rounded inner bead untouched.
+save(round_corners(Image.open(IMG / "4_1.png"), 96, keep_from=52).resize((512, 512), Image.LANCZOS), "frame_inset")
 
 # Plaque: normal (top) and pressed (bottom) from the sheet
 sheet = Image.open(IMG / "4_2.png")

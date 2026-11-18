@@ -148,8 +148,8 @@ class PlayerPage(private val a: MainActivity) {
         val add = Plaque(a, "ADD", 12f); val rem = Plaque(a, "REM", 12f); val sel = Plaque(a, "SEL", 12f)
         val misc = Plaque(a, "MISC", 12f) // MISC also holds the list options (Winamp's OPTS)
         for (p in listOf(add, rem, sel, misc)) buttonsRow.addView(p, lp(0, a.dpi(34f), 1f).margins(a, 2f, 0f, 2f, 0f))
-        // Equal space above (to the list frame) and below (to the panel rim): measured 26 px vs 10 px before.
-        pl.addView(buttonsRow, lp(MATCH, WRAP).margins(a, 0f, 3f, 0f, 3f))
+        // Single frame: the list has one dark frame; the buttons sit on the wood below it.
+        pl.addView(buttonsRow, lp(MATCH, WRAP).margins(a, 0f, 8f, 0f, 2f))
         add.setOnClickListener { menu(it, "Add files…", "Add folder…", "Add URL…", "Add from library") { addAction(it) } }
         rem.setOnClickListener { menu(it, "Remove selected", "Crop (keep selected)", "Remove all") { remAction(it) } }
         sel.setOnClickListener { menu(it, "Select all", "Select none", "Invert selection") { selAction(it) } }
@@ -160,7 +160,7 @@ class PlayerPage(private val a: MainActivity) {
             }
         }
 
-        plPanel = a.framed(pl, raised = true, padDp = 12f)
+        plPanel = pl
         view.addView(plPanel, lp(MATCH, 0, 1f))
         setPlaylistVisible(Engine.prefs(a).getBoolean("pl_visible", true))
     }
