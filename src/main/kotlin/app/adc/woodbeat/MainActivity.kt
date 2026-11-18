@@ -171,12 +171,12 @@ class MainActivity : Activity() {
             setOnClickListener { overflow(it) }
         }
         logoBar.addView(more, FrameLayout.LayoutParams(moreW, rowH, Gravity.END or Gravity.CENTER_VERTICAL))
-        // Maker's stamp: 50 %, slightly tilted, centred between the logo's visible right tip and the ⋮ dots.
+        // Maker's stamp: full opacity, slightly tilted, starting under the logo's right ornament tip, low in the row.
         val stampBmp = Skin.bmp(this, R.drawable.stamp)
         val stamp = ImageView(this).apply {
             setImageBitmap(stampBmp)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            alpha = 0.50f
+            alpha = 1f
             rotation = -6f
         }
         logoBar.addView(stamp, FrameLayout.LayoutParams(0, 0, Gravity.START or Gravity.CENTER_VERTICAL))
@@ -187,12 +187,13 @@ class MainActivity : Activity() {
             val logoW = minOf(w.toFloat(), logo.height * d.intrinsicWidth.toFloat() / d.intrinsicHeight)
             // Visible ends: the ornament tip sits at 98 % of the logo image; the ⋮ dots are ~17 dp from the right edge.
             val gapStart = (w - logoW) / 2f + logoW * 0.98f
-            val gapEnd = w - dp(20f)
-            val sw = minOf(dp(66f), gapEnd - gapStart - dp(6f)).toInt().coerceAtLeast(dpi(30f))
+            val gapEnd = w - dp(21f)
+            val sw = minOf(dp(62f), gapEnd - gapStart - dp(2f)).toInt().coerceAtLeast(dpi(30f))
             val sh = sw * stampBmp.height / stampBmp.width
             v.post {
                 stamp.layoutParams = FrameLayout.LayoutParams(sw, sh, Gravity.START or Gravity.CENTER_VERTICAL)
-                stamp.translationX = (gapStart + gapEnd) / 2f - sw / 2f
+                stamp.translationX = gapStart + dp(1f) // starts just under the logo's right ornament tip
+                stamp.translationY = dp(6f)            // sits low in the row, below the ornament
             }
         }
         root.addView(logoBar, lp(MATCH, rowH))

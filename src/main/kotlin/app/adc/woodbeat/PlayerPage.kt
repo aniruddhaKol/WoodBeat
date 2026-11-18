@@ -17,10 +17,10 @@ class PlayerPage(private val a: MainActivity) {
 
     val view: LinearLayout = a.vbox()
     private val time = LcdTime(a)
-    private val title = a.text(15f, Colors.LCD, mono = true)
-    private val kbps = a.text(11f, Colors.LCD, mono = true)
-    private val mono = a.text(10f, Colors.LCD_DIM, mono = true).apply { text = "mono" }
-    private val stereo = a.text(10f, Colors.LCD_DIM, mono = true).apply { text = "stereo" }
+    // LCD text is sized in dp like the seven-segment clock: a real LCD doesn't grow with the phone's font setting.
+    private val title = a.text(15f, Colors.LCD, mono = true).lcdSize(15f)
+    private val kbps = a.text(11f, Colors.LCD, mono = true).lcdSize(KBPS_DP)
+    private val channels = a.text(11f, Colors.LCD_BRIGHT, mono = true).lcdSize(11f) // "stereo" / "mono" / nothing
     private val spectrum = Spectrum(a)
     private val elapsed = a.text(12f, Colors.IVORY, mono = true)
     private val total = a.text(12f, Colors.IVORY, mono = true)
@@ -64,8 +64,7 @@ class PlayerPage(private val a: MainActivity) {
         right.addView(title, lp(MATCH, WRAP).margins(a, 0f, 2f, 0f, 6f))
         val infoRow = a.hbox()
         infoRow.addView(kbps, lp(0, WRAP, 1f))
-        infoRow.addView(mono, lp(WRAP, WRAP).margins(a, 4f, 0f, 6f, 0f))
-        infoRow.addView(stereo, lp(WRAP, WRAP))
+        infoRow.addView(channels, lp(WRAP, WRAP).margins(a, 6f, 0f, 0f, 0f))
         right.addView(infoRow, lp(MATCH, WRAP))
         top.addView(right, lp(0, WRAP, 1f).margins(a, 10f, 0f, 0f, 0f))
         lcdBox.addView(top, lp(MATCH, WRAP))
@@ -346,8 +345,10 @@ class PlayerPage(private val a: MainActivity) {
         }
         kbps.setTextColor(if (a.lastError != null) Colors.ORANGE else Colors.LCD)
         val ch = f?.channelCount ?: 0
-        mono.setTextColor(if (ch == 1) Colors.LCD_BRIGHT else Colors.LCD_DIM)
-        stereo.setTextColor(if (ch >= 2) Colors.LCD_BRIGHT else Colors.LCD_DIM)
+        val chText = if (t == null || a.lastError != null) "" else if (ch >= 2) "stereo" else if (ch == 1) "mono" else ""
+        if (channels.text.toString() != chText) channels.text = chText
+        // Safety net: if the line still doesn't fit (narrow phone, long bitrate), shrink it a little instead of "…".
+        kbps.post { fitText(kbps, KBPS_DP) }
 
         seek.isEnabled = !live && dur > 0
         if (!seek.dragging) {

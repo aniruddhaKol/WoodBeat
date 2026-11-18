@@ -87,11 +87,13 @@ save(Image.open(IMG / "WoodBeat_Adaptive_Background_Corrected_432x432.png").conv
 
 # Maker's stamp: chalk-grey on white -> ivory ink on transparency (the app draws it at 15 % opacity)
 g = np.array(Image.open(IMG / "stamp_original.jpg").convert("L")).astype(np.float32)
-ink = np.clip((235 - g) / 120, 0, 1)                      # white paper -> 0, grey chalk -> 1
+ink = np.clip((232 - g) / 70, 0, 1)                       # white paper -> 0, grey chalk -> solid (strong contrast)
 ys, xs = np.where(ink > 0.05)
 ink = ink[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+# Thicken the chalk strokes a little so the stamp stays readable at ~60 dp on a phone
+ink = np.array(Image.fromarray((ink * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(5))).astype(np.float32) / 255
 st = np.zeros(ink.shape + (4,), np.uint8)
-st[..., 0], st[..., 1], st[..., 2] = 0xF2, 0xD7, 0xA6      # ivory
+st[..., 0], st[..., 1], st[..., 2] = 0xFF, 0xEC, 0xC8      # bright cream
 st[..., 3] = (ink * 255).astype(np.uint8)
 stamp = Image.fromarray(st)
 save(stamp.resize((480, round(stamp.height * 480 / stamp.width)), Image.LANCZOS), "stamp")

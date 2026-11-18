@@ -41,6 +41,26 @@ fun Context.text(sizeSp: Float, color: Int, mono: Boolean = false, bold: Boolean
     ellipsize = TextUtils.TruncateAt.END
 }
 
+/** Fixed-size text in dp (ignores the phone's font-size setting) — for LCD read-outs. */
+fun TextView.lcdSize(dp: Float): TextView = apply { setTextSize(TypedValue.COMPLEX_UNIT_DIP, dp) }
+
+const val KBPS_DP = 11f
+
+/** Shrinks a one-line text view (down to 70 % of baseDp) until its text fits its width. */
+fun fitText(tv: TextView, baseDp: Float) {
+    val room = tv.width - tv.paddingLeft - tv.paddingRight
+    if (room <= 0) return
+    val p = android.text.TextPaint(tv.paint)
+    var size = baseDp
+    while (size > baseDp * 0.7f) {
+        p.textSize = size * tv.resources.displayMetrics.density
+        if (p.measureText(tv.text.toString()) <= room) break
+        size -= 0.5f
+    }
+    val px = size * tv.resources.displayMetrics.density
+    if (kotlin.math.abs(tv.textSize - px) > 0.5f) tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size)
+}
+
 /** Wooden frame around a child (raised panel or dark inset). */
 fun Context.framed(child: View, raised: Boolean, padDp: Float): FrameLayout = FrameLayout(this).apply {
     background = if (raised) Skin.raised(this@framed) else Skin.inset(this@framed)
@@ -163,12 +183,25 @@ fun Context.woodMenu(anchor: View?, items: List<String>, title: String? = null, 
         .coerceIn(dpi(110f), (resources.displayMetrics.widthPixels * 0.85f).toInt())
     frame.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
         View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
-    popup = android.widget.PopupWindow(frame, w, minOf(frame.measuredHeight, maxH), true).apply {
+    val h = minOf(frame.measuredHeight, maxH)
+    popup = android.widget.PopupWindow(frame, w, h, true).apply {
         setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
         elevation = dp(12f)
     }
-    if (anchor == null) popup.showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)
-    else popup.showAsDropDown(anchor, 0, -dpi(4f))
+    val decor = activity.window.decorView
+    if (anchor == null) { popup.showAtLocation(decor, Gravity.CENTER, 0, 0); return }
+
+    // Place it ourselves so it never touches the screen edge: keep a margin that stays inside the app's
+    // panels (page padding 8 dp + frame rim). Menus from right-hand buttons line up with the button's right edge.
+    val area = android.graphics.Rect().also { decor.getWindowVisibleDisplayFrame(it) }
+    val margin = dpi(16f)
+    val loc = IntArray(2).also { anchor.getLocationInWindow(it) }
+    val anchorLeft = loc[0]; val anchorRight = loc[0] + anchor.width
+    val rightHalf = anchorLeft + anchor.width / 2 > area.centerX()
+    val x = (if (rightHalf) anchorRight - w else anchorLeft).coerceIn(area.left + margin, area.right - margin - w)
+    val below = loc[1] + anchor.height - dpi(4f)
+    val y = if (below + h <= area.bottom - margin) below else (loc[1] - h + dpi(4f)).coerceAtLeast(area.top + margin)
+    popup.showAtLocation(decor, Gravity.NO_GRAVITY, x, y)
 }
 
 fun Context.info(title: String, body: String) {
