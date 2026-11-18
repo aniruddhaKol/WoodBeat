@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="WoodBeat playlist glyph">
+<defs>
+  <linearGradient id="ivory" x1="0" y1="0" x2="0.15" y2="1">
+    <stop offset="0" stop-color="#fffaf0"/><stop offset="0.35" stop-color="#ffe8b9"/><stop offset="0.72" stop-color="#e9bb78"/><stop offset="1" stop-color="#b9793d"/>
+  </linearGradient>
+  <linearGradient id="goldedge" x1="0" y1="0" x2="0.2" y2="1">
+    <stop offset="0" stop-color="#fff0ca"/><stop offset="0.48" stop-color="#dfa862"/><stop offset="1" stop-color="#965022"/>
+  </linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="145%" height="155%">
+    <feDropShadow dx="1.1" dy="1.8" stdDeviation="0.7" flood-color="#2c0e05" flood-opacity="0.75"/>
+  </filter>
+  <clipPath id="triangleClip"><path d="M41.5 38.5 Q41.5 36.9 43.2 37.8 L60.5 47.1 Q62 48 60.5 48.9 L43.2 58.2 Q41.5 59.1 41.5 57.5 Z"/></clipPath>
+</defs>
+<!-- Exact reference structure: two rounded lines, a rectangular play tile, two rounded lines. -->
+<g filter="url(#shadow)">
+  <!-- Top two lines -->
+  <g stroke="#54280d" stroke-width="8" stroke-linecap="round">
+    <path d="M30 12 H66"/><path d="M26 23 H70"/>
+    <path d="M26 74 H70"/><path d="M30 85 H66"/>
+  </g>
+  <g stroke="url(#ivory)" stroke-width="5.3" stroke-linecap="round">
+    <path d="M30 12 H66"/><path d="M26 23 H70"/>
+    <path d="M26 74 H70"/><path d="M30 85 H66"/>
+  </g>
+  <g stroke="#fff9e9" stroke-width="1.1" stroke-linecap="round" opacity="0.83">
+    <path d="M31 10.7 H65"/><path d="M27 21.7 H69"/>
+    <path d="M27 72.7 H69"/><path d="M31 83.7 H65"/>
+  </g>
+  <!-- Play window: precise square corners, full and even ivory frame -->
+  <rect x="13" y="31" width="70" height="34" rx="3.6" fill="#4a220c"/>
+  <rect x="15.2" y="33.2" width="65.6" height="29.6" rx="1.8" fill="none" stroke="url(#ivory)" stroke-width="5.1"/>
+  <path d="M18.4 34.8 H77.6" stroke="#fff7e3" stroke-width="1.25" opacity="0.85"/>
+  <path d="M17.7 36.5 V58.7" stroke="#fff7e3" stroke-width="0.85" opacity="0.56"/>
+  <!-- Play glyph with all highlights INSIDE its silhouette -->
+  <path d="M41.5 38.5 Q41.5 36.9 43.2 37.8 L60.5 47.1 Q62 48 60.5 48.9 L43.2 58.2 Q41.5 59.1 41.5 57.5 Z" fill="#4c240e" stroke="#54280d" stroke-width="4.7" stroke-linejoin="round"/>
+  <path d="M41.5 38.5 Q41.5 36.9 43.2 37.8 L60.5 47.1 Q62 48 60.5 48.9 L43.2 58.2 Q41.5 59.1 41.5 57.5 Z" fill="url(#ivory)" stroke="#eebf80" stroke-width="1" stroke-linejoin="round"/>
+  <g clip-path="url(#triangleClip)">
+    <path d="M43.6 39.5 L57.6 47.4" stroke="#fffdf3" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+    <path d="M44.3 56 L58.3 48.2" stroke="#9d5d29" stroke-width="1.4" opacity="0.55"/>
+  </g>
+</g>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Play glyph">
+  <defs>
+    <linearGradient id="ivory" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#fff8e6"/>
+      <stop offset="0.48" stop-color="#f7dba6"/>
+      <stop offset="1" stop-color="#c48a4b"/>
+    </linearGradient>
+    <filter id="shade" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" result="blur"/>
+      <feOffset in="blur" dx="1.5" dy="2.4" result="offset"/>
+      <feComponentTransfer in="offset" result="opacity"><feFuncA type="linear" slope="0.68"/></feComponentTransfer>
+      <feMerge><feMergeNode in="opacity"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Transparent background; matching ivory-gold beveled controls for wooden button #5. -->
+  <path d="M30 21 L75 48 L30 75 Z" fill="url(#ivory)" stroke="#53290f" stroke-width="3.2" stroke-linejoin="round" filter="url(#shade)"/>
+  <path d="M34 27 L68 48" fill="none" stroke="#fff8df" stroke-width="1.9" stroke-linecap="round" opacity="0.72"/>
+</svg>

@@ -1,0 +1,24 @@
+# Gradle / Kotlin / Android output
+.gradle/
+.kotlin/
+build/
+local.properties
+*.apk
+*.aab
+*.idsig
+
+# Signing material
+*.keystore
+*.jks
+*.pem
+*.key
+
+# Superseded or unused source art (kept locally, not published)
+/images/1.png
+/images/3.png
+/images/5.png
+/images/10_1.png
+/images/30.png
+/images/WoodBeat_Adaptive_Corrected_Preview_432x432.png
+/images/WoodBeat_Glyph_Eject_96x96.svg
+/images/WoodBeat_Glyph_Playlist_96x96.svg

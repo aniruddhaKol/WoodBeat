@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Overflow menu glyph">
+  <defs>
+    <linearGradient id="ivory" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#fff8e6"/>
+      <stop offset="0.48" stop-color="#f7dba6"/>
+      <stop offset="1" stop-color="#c48a4b"/>
+    </linearGradient>
+    <filter id="shade" x="-25%" y="-25%" width="150%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" result="blur"/>
+      <feOffset in="blur" dx="1.5" dy="2.4" result="offset"/>
+      <feComponentTransfer in="offset" result="opacity"><feFuncA type="linear" slope="0.68"/></feComponentTransfer>
+      <feMerge><feMergeNode in="opacity"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Transparent, icon-only glyph for the shared wooden button. -->
+  <g filter="url(#shade)" fill="url(#ivory)" stroke="#53290f" stroke-width="3.2">
+    <circle cx="48" cy="24" r="8"/>
+    <circle cx="48" cy="48" r="8"/>
+    <circle cx="48" cy="72" r="8"/>
+  </g>
+  <g fill="#fff8df" opacity="0.76">
+    <circle cx="45.5" cy="21.5" r="2.4"/>
+    <circle cx="45.5" cy="45.5" r="2.4"/>
+    <circle cx="45.5" cy="69.5" r="2.4"/>
+  </g>
+</svg>

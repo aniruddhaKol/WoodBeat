@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Next track glyph">
+  <defs>
+    <linearGradient id="ivory" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#fff8e6"/>
+      <stop offset="0.48" stop-color="#f7dba6"/>
+      <stop offset="1" stop-color="#c48a4b"/>
+    </linearGradient>
+    <filter id="shade" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" result="blur"/>
+      <feOffset in="blur" dx="1.5" dy="2.4" result="offset"/>
+      <feComponentTransfer in="offset" result="opacity"><feFuncA type="linear" slope="0.68"/></feComponentTransfer>
+      <feMerge><feMergeNode in="opacity"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Transparent background; consistent with Previous, Play, Pause, Stop. -->
+  <g filter="url(#shade)" stroke="#53290f" stroke-width="3.2" stroke-linejoin="round">
+    <rect x="71" y="24" width="9" height="48" rx="1.3" fill="url(#ivory)"/>
+    <path d="M45 25 L69 48 L45 71 Z" fill="url(#ivory)"/>
+    <path d="M18 25 L42 48 L18 71 Z" fill="url(#ivory)"/>
+  </g>
+  <g fill="none" stroke="#fff8df" stroke-linecap="round" stroke-width="1.9" opacity="0.72">
+    <path d="M74 27 V67"/>
+    <path d="M48.5 30.5 L64.2 48"/>
+    <path d="M21.5 30.5 L37.2 48"/>
+  </g>
+</svg>
