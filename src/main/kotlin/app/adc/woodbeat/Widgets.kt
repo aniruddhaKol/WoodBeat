@@ -150,6 +150,39 @@ class WoodButton(ctx: Context, glyph: Int, private val square: Boolean = true) :
     }
 }
 
+/** Ready-made square icon button art (back, search, URL). Long-press shows its name. */
+@SuppressLint("ViewConstructor")
+class IconButton(ctx: Context, icon: Int, label: String, pressedIcon: Int = 0) : View(ctx) {
+    private val bmp = Skin.bmp(ctx, icon)
+    private val pressedBmp = if (pressedIcon != 0) Skin.bmp(ctx, pressedIcon) else null
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val pressedTint = android.graphics.PorterDuffColorFilter(0x40000000, android.graphics.PorterDuff.Mode.SRC_ATOP)
+    private val rect = RectF()
+
+    init {
+        isClickable = true; isFocusable = true
+        contentDescription = label
+        tooltipText = label
+    }
+
+    override fun drawableStateChanged() { super.drawableStateChanged(); invalidate() }
+
+    override fun onDraw(canvas: Canvas) {
+        val s = min(width, height).toFloat()
+        rect.set((width - s) / 2, (height - s) / 2, (width + s) / 2, (height + s) / 2)
+        paint.alpha = if (isEnabled) 255 else 110
+        if (isPressed && pressedBmp != null) {          // supplied pressed art (lit wood)
+            paint.colorFilter = null
+            canvas.drawBitmap(pressedBmp, null, rect, paint)
+        } else {                                         // otherwise: sink a little and darken
+            val off = if (isPressed) s * 0.03f else 0f
+            rect.offset(off, off)
+            paint.colorFilter = if (isPressed) pressedTint else null
+            canvas.drawBitmap(bmp, null, rect, paint)
+        }
+    }
+}
+
 /** Wooden plaque with a caption: buttons, toggles, tabs, section titles. */
 @SuppressLint("ViewConstructor")
 class Plaque(ctx: Context, text: String, private val sizeSp: Float = 13f) : View(ctx) {
@@ -166,6 +199,9 @@ class Plaque(ctx: Context, text: String, private val sizeSp: Float = 13f) : View
     var lit = false
         set(v) { field = v; invalidate() }
     var dropDown = false
+    /** Secondary action (e.g. CANCEL): dimmed caption so the main button stands out. */
+    var secondary = false
+        set(v) { field = v; invalidate() }
 
     init { isClickable = true; isFocusable = true }
 
@@ -188,6 +224,7 @@ class Plaque(ctx: Context, text: String, private val sizeSp: Float = 13f) : View
             !isEnabled -> Colors.IVORY_DIM
             toggle && lit -> Colors.LCD_BRIGHT
             toggle -> Colors.IVORY_DIM
+            secondary -> Colors.IVORY_DIM
             else -> Colors.IVORY
         }
         var cx = width / 2f

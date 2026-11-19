@@ -83,6 +83,9 @@ class MainActivity : Activity() {
             insets
         }
         setContentView(outer)
+        if (Build.VERSION.SDK_INT >= 33) onBackInvokedDispatcher.registerOnBackInvokedCallback(
+            android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback as android.window.OnBackInvokedCallback,
+        )
         askPermissions()
         handleIntent(intent)
     }
@@ -119,13 +122,24 @@ class MainActivity : Activity() {
         super.onStop()
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
+    /**
+     * Back: inside a Library sub-screen → one level up; on Equalizer / Library → Player tab; on Player → exit.
+     * (Music keeps playing in the background service after exit.)
+     */
+    private fun handleBack() {
         if (libraryPage.back()) return
         val p = pager
         if (p != null && firstTab == 0 && p.currentItem != 0) { p.currentItem = 0; return }
-        moveTaskToBack(true)
+        if (p != null && firstTab == 1 && p.currentItem != 0) { p.currentItem = 0; return }
+        finish()
     }
+
+    // Android 13+ (and always for apps targeting Android 16) delivers Back through this callback, not onBackPressed.
+    private val backCallback: Any? = if (Build.VERSION.SDK_INT >= 33)
+        android.window.OnBackInvokedCallback { handleBack() } else null
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() = handleBack()
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
@@ -192,8 +206,9 @@ class MainActivity : Activity() {
             val sh = sw * stampBmp.height / stampBmp.width
             v.post {
                 stamp.layoutParams = FrameLayout.LayoutParams(sw, sh, Gravity.START or Gravity.CENTER_VERTICAL)
-                stamp.translationX = gapStart + dp(1f) // starts just under the logo's right ornament tip
-                stamp.translationY = dp(6f)            // sits low in the row, below the ornament
+                // Starts just under the logo's right ornament tip, low in the row (fine-tuned on the phone).
+                stamp.translationX = gapStart - dp(2f)
+                stamp.translationY = dp(10.9f)
             }
         }
         root.addView(logoBar, lp(MATCH, rowH))
@@ -244,7 +259,8 @@ class MainActivity : Activity() {
         }
 
         strip = buildStrip()
-        root.addView(strip, lp(MATCH, WRAP).margins(this, 8f, 0f, 8f, 6f))
+        // 1.5 dp above + the panel's own shadow = the 6 dp below (measured equal on screen)
+        root.addView(strip, lp(MATCH, WRAP).margins(this, 8f, 1.5f, 8f, 6f))
         updateStrip()
         return root
     }
@@ -269,12 +285,13 @@ class MainActivity : Activity() {
             ellipsize = TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isSelected = true
             gravity = Gravity.CENTER_VERTICAL
         }
-        row.addView(stripTitle, lp(0, dpi(40f), 1f).margins(this, 4f, 0f, 6f, 0f))
+        row.addView(stripTitle, lp(0, dpi(34f), 1f).margins(this, 4f, 0f, 6f, 0f))
         val prev = WoodButton(this, R.drawable.glyph_previous).apply { setOnClickListener { controller?.seekToPreviousMediaItem() } }
         stripPlay = WoodButton(this, R.drawable.glyph_play).apply { setOnClickListener { playPause() } }
         val next = WoodButton(this, R.drawable.glyph_next).apply { setOnClickListener { controller?.seekToNextMediaItem() } }
-        for (b in listOf(prev, stripPlay, next)) row.addView(b, lp(dpi(40f), dpi(40f)).margins(this, 3f, 0f, 3f, 0f))
-        return framed(row, raised = false, padDp = 9f)
+        // Buttons sized to sit inside the copper rim (the frame's rim is ~12 dp, so pad 12 dp all round)
+        for (b in listOf(prev, stripPlay, next)) row.addView(b, lp(dpi(34f), dpi(34f)).margins(this, 3f, 0f, 3f, 0f))
+        return framed(row, raised = false, padDp = 12f)
     }
 
     private fun updateStrip() {
@@ -490,6 +507,14 @@ class MainActivity : Activity() {
         val idx = p.getInt("queue_index", 0).coerceIn(0, list.size - 1)
         c.setMediaItems(list.map { it.toItem() }, idx, p.getLong("queue_pos", 0))
         c.prepare()
+    }
+
+    /** True when the phone is on Wi-Fi or Ethernet (a local network DLNA servers can be on). */
+    fun onLocalNetwork(): Boolean {
+        val cm = getSystemService(android.net.ConnectivityManager::class.java) ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
     }
 
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()

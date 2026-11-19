@@ -1,6 +1,5 @@
 package app.adc.woodbeat
 
-import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -10,7 +9,6 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -46,13 +44,13 @@ fun TextView.lcdSize(dp: Float): TextView = apply { setTextSize(TypedValue.COMPL
 
 const val KBPS_DP = 11f
 
-/** Shrinks a one-line text view (down to 70 % of baseDp) until its text fits its width. */
-fun fitText(tv: TextView, baseDp: Float) {
+/** Shrinks a one-line text view (down to minFraction of baseDp) until its text fits its width. */
+fun fitText(tv: TextView, baseDp: Float, minFraction: Float = 0.7f) {
     val room = tv.width - tv.paddingLeft - tv.paddingRight
     if (room <= 0) return
     val p = android.text.TextPaint(tv.paint)
     var size = baseDp
-    while (size > baseDp * 0.7f) {
+    while (size > baseDp * minFraction) {
         p.textSize = size * tv.resources.displayMetrics.density
         if (p.measureText(tv.text.toString()) <= room) break
         size -= 0.5f
@@ -75,27 +73,130 @@ fun fmt(ms: Long): String {
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s / 60) % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
 }
 
-fun Context.dialog(): AlertDialog.Builder = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+/**
+ * Wooden dialog: raised frame, copper title, carved divider, body, plaque buttons. Always centred on screen
+ * (Samsung puts standard dialogs at the bottom). positive returns false to keep the dialog open.
+ */
+fun Context.woodDialog(
+    title: String,
+    body: View,
+    positive: String,
+    negative: String? = "CANCEL",
+    keyboard: Boolean = false,
+    titleExtra: View? = null,            // optional control on the right of the title row (e.g. a switch)
+    subtitle: String? = null,            // optional small second title line (e.g. the data source)
+    onPositive: () -> Boolean,
+): android.app.Dialog {
+    val d = android.app.Dialog(this)
+    d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+    val col = vbox()
+    // Title row: left-aligned title (wraps if needed); with an extra control, each side gets at most half the width
+    val titleText = android.text.SpannableStringBuilder(title.uppercase())
+    subtitle?.let {
+        val start = titleText.length + 1
+        titleText.append("\n").append(it.uppercase())
+        titleText.setSpan(android.text.style.RelativeSizeSpan(0.6f), start, titleText.length, 0)
+        titleText.setSpan(android.text.style.ForegroundColorSpan(Colors.IVORY_DIM), start, titleText.length, 0)
+    }
+    val titleView = text(14f, Colors.COPPER, bold = true).lcdSize(14f).apply {
+        text = titleText; letterSpacing = 0.1f; gravity = Gravity.START or Gravity.CENTER_VERTICAL
+        isSingleLine = false; maxLines = 3; ellipsize = null
+    }
+    val titleRow = hbox(Gravity.CENTER_VERTICAL)
+    if (titleExtra == null) titleRow.addView(titleView, lp(0, WRAP, 1f))
+    else {
+        titleRow.addView(titleView, lp(0, WRAP, 1f))
+        titleRow.addView(FrameLayout(this).apply {
+            addView(titleExtra, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.END or Gravity.CENTER_VERTICAL))
+        }, lp(0, WRAP, 1f).margins(this, 8f, 0f, 0f, 0f))
+    }
+    col.addView(titleRow, lp(MATCH, WRAP).margins(this, 4f, 2f, 4f, 10f))
+    col.addView(BevelRule(this), lp(MATCH, WRAP))
+    col.addView(body, lp(MATCH, WRAP).margins(this, 4f, 14f, 4f, 16f))
+    val row = hbox(Gravity.END or Gravity.CENTER_VERTICAL)
+    // Cancel is the secondary action: same plaque, dimmed caption
+    negative?.let { n -> row.addView(Plaque(this, n, 12f).apply { secondary = true; setOnClickListener { d.dismiss() } },
+        lp(WRAP, dpi(36f)).margins(this, 0f, 0f, 8f, 0f)) }
+    val submit = { if (onPositive()) d.dismiss() }
+    row.addView(Plaque(this, positive, 12f).apply { setOnClickListener { submit() } }, lp(WRAP, dpi(36f)))
+    col.addView(row, lp(MATCH, WRAP))
+    // Enter / Done on the keyboard does the same as the main button
+    (body as? EditText)?.setOnEditorActionListener { _, id, ev ->
+        val enter = id == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
+            (ev?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && ev.action == android.view.KeyEvent.ACTION_DOWN)
+        if (enter) submit()
+        enter
+    }
+    d.setContentView(framed(col, raised = true, padDp = 18f))
+    d.window?.apply {
+        setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
+        setGravity(Gravity.CENTER)
+        val w = minOf((resources.displayMetrics.widthPixels * 0.9f).toInt(), dpi(440f))
+        setLayout(w, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setSoftInputMode(
+            (if (keyboard) android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE else 0) or
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
+        )
+    }
+    d.show()
+    return d
+}
+
+/** Text box in the app's style: dark inset with ivory text. */
+fun Context.woodField(initial: String, hint: String, url: Boolean): EditText = EditText(this).apply {
+    setText(initial); this.hint = hint; isSingleLine = true
+    imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+    inputType = if (url) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI else InputType.TYPE_CLASS_TEXT
+    setTextColor(Colors.IVORY); setHintTextColor(Colors.IVORY_DIM)
+    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+    background = Skin.inset(this@woodField)
+    setPadding(dpi(16f), dpi(14f), dpi(16f), dpi(14f))
+    highlightColor = 0x66D98A4E
+    if (android.os.Build.VERSION.SDK_INT >= 29) textCursorDrawable =
+        android.graphics.drawable.GradientDrawable().apply { setColor(Colors.COPPER); setSize(dpi(2f), dpi(20f)) }
+    setSelection(text.length)
+}
 
 fun Context.askText(title: String, initial: String = "", hint: String = "", url: Boolean = false, ok: (String) -> Unit) {
-    val e = EditText(this).apply {
-        setText(initial); this.hint = hint; isSingleLine = true
-        inputType = if (url) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI else InputType.TYPE_CLASS_TEXT
-        setSelection(text.length)
+    val e = woodField(initial, hint, url)
+    woodDialog(title, e, "OK", keyboard = true) {
+        val v = e.text.toString().trim()
+        if (v.isNotEmpty()) ok(v)
+        true
     }
-    val box = FrameLayout(this).apply { setPadding(dpi(20f), dpi(8f), dpi(20f), 0); addView(e) }
-    dialog().setTitle(title).setView(box)
-        .setPositiveButton("OK") { _, _ -> e.text.toString().trim().takeIf { it.isNotEmpty() }?.let(ok) }
-        .setNegativeButton("Cancel", null).show()
+    e.requestFocus()
 }
 
 fun Context.askSearch(ok: (String, Boolean) -> Unit) {
-    val e = EditText(this).apply { hint = "Station, city or genre (e.g. Kolkata)"; isSingleLine = true }
-    val c = CheckBox(this).apply { text = "India only"; isChecked = true }
-    val box = vbox().apply { setPadding(dpi(20f), dpi(8f), dpi(20f), 0); addView(e); addView(c) }
-    dialog().setTitle("Search radio-browser.info").setView(box)
-        .setPositiveButton("Search") { _, _ -> e.text.toString().trim().takeIf { it.isNotEmpty() }?.let { ok(it, c.isChecked) } }
-        .setNegativeButton("Cancel", null).show()
+    val e = woodField("", "Station, city or genre (e.g. Kolkata)", url = false)
+    // "India only": label + the Equalizer's ON/OFF switch, right-aligned in the title row
+    var india = true
+    val sw = android.widget.ImageView(this).apply {
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        contentDescription = "India only"
+        setImageBitmap(Skin.bmp(this@askSearch, R.drawable.switch_on))
+        setOnClickListener {
+            india = !india
+            setImageBitmap(Skin.bmp(this@askSearch, if (india) R.drawable.switch_on else R.drawable.switch_off))
+        }
+    }
+    val extra = hbox(Gravity.END or Gravity.CENTER_VERTICAL).apply {
+        addView(text(12f, Colors.IVORY, bold = true).lcdSize(12f).apply { text = "India only" },
+            lp(WRAP, WRAP).margins(this@askSearch, 0f, 0f, 6f, 0f))
+        addView(sw, lp(dpi(60f), dpi(30f)))
+    }
+    woodDialog("Search", e, "SEARCH", keyboard = true, titleExtra = extra, subtitle = "radio-browser.info") {
+        val v = e.text.toString().trim()
+        if (v.isNotEmpty()) ok(v, india)
+        true
+    }
+    e.requestFocus()
+}
+
+/** Asks before something that can't be undone. */
+fun Context.confirm(title: String, message: String, action: String, yes: () -> Unit) {
+    val msg = text(15f, Colors.IVORY).apply { text = message; isSingleLine = false; maxLines = 6 }
+    woodDialog(title, msg, action) { yes(); true }
 }
 
 /** List to choose from (presets, playlists): a wooden menu in the middle of the screen. */
@@ -205,7 +306,8 @@ fun Context.woodMenu(anchor: View?, items: List<String>, title: String? = null, 
 }
 
 fun Context.info(title: String, body: String) {
-    dialog().setTitle(title).setMessage(body).setPositiveButton("OK", null).show()
+    val msg = text(14f, Colors.IVORY).apply { text = body; isSingleLine = false; maxLines = 20; setTextIsSelectable(true) }
+    woodDialog(title, msg, "OK", negative = null) { true }
 }
 
 /** Thin dark lines between list rows. */

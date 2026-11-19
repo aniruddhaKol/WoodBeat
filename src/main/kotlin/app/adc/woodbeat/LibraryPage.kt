@@ -29,7 +29,7 @@ class LibraryPage(private val a: MainActivity) {
     private val stack = ArrayList<Screen>()
     private var rows: List<Row> = emptyList()
     private val nav = a.hbox()
-    private val back = Plaque(a, "‹ BACK", 12f)
+    private val back = IconButton(a, R.drawable.icon_back, "Back", R.drawable.icon_back_pressed)
     private val heading = a.text(15f, Colors.IVORY, bold = true)
     private val actions = a.hbox()
     private val list = RecyclerView(a)
@@ -42,7 +42,7 @@ class LibraryPage(private val a: MainActivity) {
         // Single frame: the back / title / actions row sits on the wood (like the tabs), the list in one dark frame.
         view.setPadding(a.dpi(8f), 0, a.dpi(8f), a.dpi(4f))
         back.setOnClickListener { back() }
-        nav.addView(back, lp(WRAP, a.dpi(34f)))
+        nav.addView(back, lp(a.dpi(42f), a.dpi(42f)))
         nav.addView(heading, lp(0, WRAP, 1f).margins(a, 10f, 0f, 6f, 0f))
         nav.addView(actions, lp(WRAP, WRAP))
         view.addView(nav, lp(MATCH, WRAP).margins(a, 3f, 0f, 3f, 8f))
@@ -73,9 +73,16 @@ class LibraryPage(private val a: MainActivity) {
 
     private fun open(s: Screen) { stack += s; render(); list.scrollToPosition(0) }
 
-    private fun action(label: String, click: () -> Unit) {
-        actions.addView(Plaque(a, label, 11f).apply { setOnClickListener { click() } },
-            lp(WRAP, a.dpi(34f)).margins(a, 4f, 0f, 0f, 0f))
+    /** Ready-made icon button art (search, URL). */
+    private fun action(icon: Int, label: String, click: () -> Unit) = addAction(IconButton(a, icon, label), click)
+
+    /** Square wooden button with a glyph (play all, add all) — same family as the transport buttons. */
+    private fun glyphAction(glyph: Int, label: String, click: () -> Unit) =
+        addAction(WoodButton(a, glyph).apply { contentDescription = label; tooltipText = label }, click)
+
+    private fun addAction(v: View, click: () -> Unit) {
+        v.setOnClickListener { click() }
+        actions.addView(v, lp(a.dpi(42f), a.dpi(42f)).margins(a, 6f, 0f, 0f, 0f))
     }
 
     private fun render() {
@@ -87,13 +94,13 @@ class LibraryPage(private val a: MainActivity) {
             is Screen.Root -> rootRows()
             is Screen.Group -> groupRows(s.kind)
             is Screen.Songs -> {
-                action("PLAY") { a.playTracks(s.tracks) }
-                action("ADD") { a.enqueue(s.tracks) }
+                glyphAction(R.drawable.glyph_play, "Play all") { a.playTracks(s.tracks) }
+                glyphAction(R.drawable.glyph_plus, "Add all to playlist") { a.enqueue(s.tracks) }
                 songRows(s)
             }
             is Screen.Stations -> {
-                action("SEARCH") { search() }
-                action("URL") { a.askUrl(playNow = true) }
+                action(R.drawable.icon_search, "Search stations") { search() }
+                action(R.drawable.icon_url, "Play URL") { a.askUrl(playNow = true) }
                 stationRows()
             }
             is Screen.Results -> resultRows(s)
@@ -109,10 +116,11 @@ class LibraryPage(private val a: MainActivity) {
         if (!a.hasAudioPermission()) out += Row(R.drawable.glyph_song, "Allow access to your music", "Needed to list songs on this device",
             click = { a.askPermissions() })
         else if (loading && songs.isEmpty()) out += Row(R.drawable.glyph_song, "Reading your music…", click = {})
-        // Order: Radio, All Songs, Folders, Playlists, then Albums, Artists, Genres.
+        // Order: Radio, DLNA, All Songs, Folders, Playlists, then Albums, Artists, Genres.
         out += Row(R.drawable.glyph_radio, "Radio", right = "${Radio.stations(a).size}", chevron = true,
             click = { open(Screen.Stations) })
-        out += Row(R.drawable.glyph_song, "All Songs", right = "${songs.size}", chevron = true,
+        out += Row(R.drawable.glyph_dlna, "DLNA", chevron = true, click = { openDlna() })
+        out += Row(R.drawable.glyph_all_songs, "All Songs", right = "${songs.size}", chevron = true,
             click = { open(Screen.Songs("All Songs", songs)) })
         out += Row(R.drawable.glyph_folder, "Folders", right = "${songs.map { it.folder }.distinct().size}", chevron = true,
             click = { open(Screen.Group("Folders", "folder")) })
@@ -135,7 +143,9 @@ class LibraryPage(private val a: MainActivity) {
                     click = { open(Screen.Songs(n, tracks, n)) },
                     long = { v -> popup(v, "Play", "Enqueue", "Delete") { when (it) {
                         "Play" -> a.playTracks(tracks); "Enqueue" -> a.enqueue(tracks)
-                        else -> { Library.deletePlaylist(a, n); render() }
+                        else -> a.confirm("Delete playlist", "Delete the saved playlist \"$n\"? This can't be undone.", "DELETE") {
+                            Library.deletePlaylist(a, n); render()
+                        }
                     } } })
             }
         }
@@ -178,7 +188,9 @@ class LibraryPage(private val a: MainActivity) {
                     "Play" -> a.playTracks(listOf(st))
                     "Enqueue" -> a.enqueue(listOf(st))
                     "Rename…" -> a.askText("Rename station", st.title) { n -> stations[i] = st.copy(title = n); Radio.save(a, stations); render() }
-                    else -> { stations.removeAt(i); Radio.save(a, stations); render() }
+                    else -> a.confirm("Delete station", "Remove \"${st.title}\" from your saved stations? This can't be undone.", "DELETE") {
+                        stations.removeAt(i); Radio.save(a, stations); render()
+                    }
                 } } })
         }
     }
@@ -198,6 +210,15 @@ class LibraryPage(private val a: MainActivity) {
                     }
                 } } })
         }
+    }
+
+    /** DLNA servers live on the local network, so Wi-Fi (or Ethernet) is required before anything else. */
+    private fun openDlna() {
+        if (!a.onLocalNetwork()) {
+            a.info("DLNA", "Connect to Wi-Fi network in order to use this feature.")
+            return
+        }
+        a.info("DLNA", "Coming soon.")
     }
 
     private fun search() {

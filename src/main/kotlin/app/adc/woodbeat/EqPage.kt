@@ -54,7 +54,7 @@ class EqPage(private val a: MainActivity) {
 
         view.addView(a.framed(body, raised = true, padDp = 14f), lp(MATCH, 0, 1f))
 
-        pre.onChange = { v -> dsp.preampDb = toDb(v); changed(custom = false) }
+        pre.onChange = { v -> dsp.preampDb = toDb(v); changed(custom = true) }
         pre.onRelease = { Engine.saveDsp(a) }
         bands.forEachIndexed { i, s ->
             s.onChange = { v -> dsp.gainsDb[i] = toDb(v); changed(custom = true) }
@@ -98,11 +98,18 @@ class EqPage(private val a: MainActivity) {
         a.playerPage.refreshState()
     }
 
+    /** The preset the sliders started from; kept while they read "Custom" so "Save" can overwrite it. */
+    private var basePreset: String
+        get() = Engine.prefs(a).getString("eq_base", preset.text) ?: preset.text
+        set(v) { Engine.prefs(a).edit().putString("eq_base", v).apply() }
+
     private fun apply(name: String, values: FloatArray) {
         for (i in 0 until WoodDsp.BANDS) dsp.gainsDb[i] = values[i]
+        if (name == "Flat") dsp.preampDb = 0f   // "Flat" means no change to the sound at all
         dsp.changed()
         Engine.saveDsp(a)
         setPresetName(name)
+        basePreset = name
         syncFromDsp()
     }
 
@@ -116,22 +123,45 @@ class EqPage(private val a: MainActivity) {
         apply(hit.key, hit.value)
     }
 
-    /** Presets (current one ticked), then the actions. */
+    /**
+     * Menu order: Auto-load toggle ═ then, once the sliders/preamp were changed ("Custom"), "Save" (only when they
+     * started from one of your own presets) and "Save as…", then your presets A–Z (+ "Delete…") ═ built-in presets A–Z.
+     */
     private fun presetMenu(anchor: View) {
         val custom = Engine.customPresets(a)
         val all = LinkedHashMap(Engine.PRESETS).apply { putAll(custom) }
         val current = preset.text
-        val save = "Save as…"; val delete = "Delete…"; val reset = "Reset to flat"
+        val modified = current == "Custom"
+        val base = basePreset
+        val saveOver = "Save \"$base\""; val saveAs = "Save as…"; val delete = "Delete…"
         val auto = "Auto-load by genre: " + if (autoOn) "ON" else "OFF"
-        val items = all.keys.map { if (it == current) "✓ $it" else it } +
-            listOf(WOOD_MENU_BREAK, save) + (if (custom.isEmpty()) emptyList() else listOf(delete)) + listOf(reset, auto)
+        val tick = { n: String -> if (n == current) "✓ $n" else n }
+        val mine = buildList {
+            if (modified && base in custom) add(saveOver)
+            if (modified) add(saveAs)
+            custom.keys.sortedBy { it.lowercase() }.forEach { add(tick(it)) }
+            if (custom.isNotEmpty()) add(delete)
+        }
+        val builtIn = Engine.PRESETS.keys.sortedBy { it.lowercase() }.map(tick)
+        val items = listOf(auto, WOOD_MENU_BREAK) + mine + (if (mine.isEmpty()) emptyList() else listOf(WOOD_MENU_BREAK)) + builtIn
         a.woodMenu(anchor, items) { choice ->
             when (choice) {
-                save -> a.askText("Save preset", if (current == "Custom") "" else current) { n ->
-                    custom[n] = dsp.gainsDb.copyOf(); Engine.saveCustomPresets(a, custom); setPresetName(n)
+                saveOver -> {
+                    custom[base] = dsp.gainsDb.copyOf(); Engine.saveCustomPresets(a, custom); setPresetName(base)
+                    a.toast("Saved \"$base\"")
                 }
-                delete -> { val n = custom.keys.toList(); a.pick("Delete preset", n) { custom.remove(n[it]); Engine.saveCustomPresets(a, custom) } }
-                reset -> { dsp.preampDb = 0f; apply("Flat", Engine.PRESETS.getValue("Flat")) }
+                saveAs -> a.askText("Save preset", "") { n ->
+                    custom[n] = dsp.gainsDb.copyOf(); Engine.saveCustomPresets(a, custom); setPresetName(n); basePreset = n
+                }
+                delete -> {
+                    val n = custom.keys.toList()
+                    a.pick("Delete preset", n) { i ->
+                        a.confirm("Delete preset", "Delete your preset \"${n[i]}\"? This can't be undone.", "DELETE") {
+                            custom.remove(n[i]); Engine.saveCustomPresets(a, custom)
+                            if (preset.text == n[i]) setPresetName("Custom")
+                        }
+                    }
+                }
                 auto -> Engine.prefs(a).edit().putBoolean("eq_auto", !autoOn).apply()
                 else -> choice.removePrefix("✓ ").let { n -> all[n]?.let { apply(n, it) } }
             }

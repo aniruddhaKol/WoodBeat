@@ -99,6 +99,37 @@ sheet = Image.open(IMG / "5_1.png")
 save(rounded_cut(sheet, (122, 80, 838, 790), 118).resize((256, 254), Image.LANCZOS), "button")
 save(rounded_cut(sheet, (935, 80, 1651, 790), 118).resize((256, 254), Image.LANCZOS), "button_pressed")
 
+# Square icon buttons supplied on black (back has normal + pressed): black -> transparent, cropped to the button
+def button_on_black(im):
+    k = key_black(im.convert("RGBA"), lo=10, hi=40)
+    a = np.array(k)
+    ys, xs = np.where(a[..., 3] > 8)
+    side = max(xs.max() - xs.min(), ys.max() - ys.min()) + 1
+    cx, cy = (xs.min() + xs.max()) // 2, (ys.min() + ys.max()) // 2
+    box = (cx - side // 2, cy - side // 2, cx - side // 2 + side, cy - side // 2 + side)
+    return k.crop(box).resize((256, 256), Image.LANCZOS)
+
+
+sheet = Image.open(IMG / "btn_back_sheet.webp")
+half = sheet.width // 2
+save(button_on_black(sheet.crop((0, 0, half, sheet.height))), "icon_back")
+save(button_on_black(sheet.crop((half, 0, sheet.width, sheet.height))), "icon_back_pressed")
+save(button_on_black(Image.open(IMG / "btn_search.webp")), "icon_search")
+save(button_on_black(Image.open(IMG / "btn_link.webp")), "icon_url")
+
+# Library icons supplied as art (All Songs on transparency, DLNA on black)
+def square_crop(im, size):
+    a = np.array(im)
+    ys, xs = np.where(a[..., 3] > 8)
+    side = max(xs.max() - xs.min(), ys.max() - ys.min()) + 1
+    cx, cy = (xs.min() + xs.max()) // 2, (ys.min() + ys.max()) // 2
+    return im.crop((cx - side // 2, cy - side // 2, cx - side // 2 + side, cy - side // 2 + side)).resize((size, size), Image.LANCZOS)
+
+
+save(square_crop(Image.open(IMG / "glyph_all_songs.webp").convert("RGBA"), 192), "glyph_all_songs")
+save(square_crop(key_black(Image.open(IMG / "glyph_dlna.webp"), lo=10, hi=40), 192), "glyph_dlna")
+
+
 # Slider thumb (vertical pill on black)
 thumb = key_black(Image.open(IMG / "9.png").crop((320, 265, 704, 1235)))
 save(thumb.resize((96, round(970 * 96 / 384)), Image.LANCZOS), "thumb")
@@ -131,7 +162,7 @@ GLYPHS = {
     "previous": "Previous", "play": "Play", "pause": "Pause", "stop": "Stop", "next": "Next",
     "shuffle": "Shuffle", "repeat": "Repeat", "overflow": "Overflow", "chevron": "Chevron",
     "song": "Song", "album": "Album", "artist": "Artist_96x96_Fixed", "folder": "Folder",
-    "playlist": "Playlist_96x96_Polished", "genre": "Genre", "radio": "Radio",
+    "playlist": "Playlist_96x96_Polished", "genre": "Genre", "radio": "Radio", "plus": "Plus",
 }
 with tempfile.TemporaryDirectory() as tmp:
     for name, src in GLYPHS.items():
@@ -141,7 +172,8 @@ with tempfile.TemporaryDirectory() as tmp:
         html.write_text(f'<html><body style="margin:0;background:transparent">'
                         f'<img src="{svg.as_uri()}" width="192" height="192"></body></html>')
         png = Path(tmp) / f"{name}.png"
-        subprocess.run([EDGE, "--headless=new", "--disable-gpu", "--hide-scrollbars",
+        # own temporary profile, so a normal Edge window that is already open can't block headless rendering
+        subprocess.run([EDGE, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={tmp}\\edge",
                         "--default-background-color=00000000", "--window-size=192,192",
                         f"--screenshot={png}", html.as_uri()], capture_output=True, timeout=60)
         save(Image.open(png).convert("RGBA"), f"glyph_{name}")
