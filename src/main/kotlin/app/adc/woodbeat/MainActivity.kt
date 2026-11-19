@@ -440,13 +440,32 @@ class MainActivity : Activity() {
         playerPage.refreshList()
     }
 
+    /**
+     * Replaces the playlist with list and plays from start. Asks first when that would throw away a different,
+     * non-empty playlist; if the list is already the playlist (e.g. another song from the same album), just jumps.
+     */
     fun playTracks(list: List<Track>, start: Int = 0) {
         val c = controller ?: return toast("Player not ready")
         if (list.isEmpty()) return
-        c.setMediaItems(list.map { it.toItem() }, start.coerceIn(0, list.size - 1), 0)
-        c.prepare()
-        c.play()
+        val from = start.coerceIn(0, list.size - 1)
+        if (queue.map { it.uri } == list.map { it.uri }) { playAt(from); return }
+        val go = {
+            c.setMediaItems(list.map { it.toItem() }, from, 0)
+            c.prepare()
+            c.play()
+        }
+        if (queue.isEmpty()) go()
+        else confirm("Replace playlist", "Replace the current playlist (${count(queue.size)}) with ${count(list.size)}?", "REPLACE") { go() }
     }
+
+    /** Clears the playlist, asking first when it isn't empty. */
+    fun clearPlaylist(after: () -> Unit = {}) {
+        val c = controller ?: return
+        if (queue.isEmpty()) { after(); return }
+        confirm("Clear playlist", "Remove all ${count(queue.size)} from the playlist?", "CLEAR") { c.clearMediaItems(); after() }
+    }
+
+    private fun count(n: Int) = if (n == 1) "1 item" else "$n items"
 
     fun enqueue(list: List<Track>) {
         val c = controller ?: return toast("Player not ready")

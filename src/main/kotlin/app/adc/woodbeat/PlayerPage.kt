@@ -27,7 +27,6 @@ class PlayerPage(private val a: MainActivity) {
     private val seek = WoodSlider(a, false).apply { showFill = true }
     private val volume = WoodSlider(a, false).apply { showFill = true }
     private val balance = WoodSlider(a, false).apply { snapCenter = true; centerTick = true }
-    private val plToggle = Plaque(a, "PL", 11f).apply { toggle = true; led = true }   // light shows the playlist is visible
     private val playPause = WoodButton(a, R.drawable.glyph_play)
     private val shuffle = WoodButton(a, R.drawable.glyph_shuffle).apply { toggle = true }
     private val repeat = WoodButton(a, R.drawable.glyph_repeat).apply { toggle = true }
@@ -90,10 +89,9 @@ class PlayerPage(private val a: MainActivity) {
         // Volume / balance / EQ / PL
         val vb = a.hbox()
         vb.addView(a.text(10f, Colors.IVORY, bold = true).apply { text = "VOL" }, lp(WRAP, WRAP))
-        vb.addView(volume, lp(0, a.dpi(30f), 2.6f).margins(a, 4f, 0f, 8f, 0f))   // takes the old EQ button's space
+        vb.addView(volume, lp(0, a.dpi(30f), 2.6f).margins(a, 4f, 0f, 10f, 0f))   // volume and balance share the whole row
         vb.addView(a.text(10f, Colors.IVORY, bold = true).apply { text = "BAL" }, lp(WRAP, WRAP))
-        vb.addView(balance, lp(0, a.dpi(30f), 1.1f).margins(a, 4f, 0f, 6f, 0f))
-        vb.addView(plToggle, lp(a.dpi(56f), a.dpi(30f)))
+        vb.addView(balance, lp(0, a.dpi(30f), 1.4f).margins(a, 4f, 0f, 0f, 0f))
         main.addView(vb, lp(MATCH, WRAP).margins(a, 0f, 8f, 0f, 4f))
         volume.value = Engine.prefs(a).getFloat("volume", 1f)
         volume.onChange = { v -> a.controller?.volume = v }
@@ -101,7 +99,6 @@ class PlayerPage(private val a: MainActivity) {
         balance.value = Engine.dsp.balance / 2f + 0.5f
         balance.onChange = { v -> Engine.dsp.balance = (v - 0.5f) * 2f }
         balance.onRelease = { Engine.saveDsp(a) }
-        plToggle.setOnClickListener { setPlaylistVisible(!plToggle.lit) }
 
         // Transport
         val tr = a.hbox()
@@ -164,25 +161,6 @@ class PlayerPage(private val a: MainActivity) {
 
         plPanel = pl
         view.addView(plPanel, lp(MATCH, 0, 1f))
-        setPlaylistVisible(Engine.prefs(a).getBoolean("pl_visible", true))
-    }
-
-    private fun setPlaylistVisible(show: Boolean) {
-        plToggle.lit = show
-        Engine.prefs(a).edit().putBoolean("pl_visible", show).apply()
-        plHeader.visibility = if (show) View.VISIBLE else View.GONE
-        plPanel.visibility = if (show) View.VISIBLE else View.GONE
-        // Without the playlist the main window takes the page and the analyser grows.
-        val mainPanel = view.getChildAt(0)
-        mainPanel.layoutParams = lp(MATCH, if (show) WRAP else 0, if (show) 0f else 1f)
-        (mainPanel as ViewGroup).getChildAt(0).layoutParams =
-            android.widget.FrameLayout.LayoutParams(MATCH, if (show) WRAP else MATCH)
-        val main = mainPanel.getChildAt(0) as LinearLayout
-        main.getChildAt(0).layoutParams = lp(MATCH, if (show) WRAP else 0, if (show) 0f else 1f)
-        (main.getChildAt(0) as ViewGroup).getChildAt(0).layoutParams =
-            android.widget.FrameLayout.LayoutParams(MATCH, if (show) WRAP else MATCH)
-        spectrum.layoutParams = lp(MATCH, if (show) a.dpi(64f) else 0, if (show) 0f else 1f).margins(a, 0f, 8f, 0f, 6f)
-        view.requestLayout()
     }
 
     private fun menu(anchor: View, vararg items: String, act: (String) -> Unit) = a.woodMenu(anchor, items.toList(), act = act)
@@ -224,7 +202,7 @@ class PlayerPage(private val a: MainActivity) {
         when (s) {
             "Remove selected" -> { a.removeIndices(selected.toList()); selected.clear() }
             "Crop (keep selected)" -> if (selected.isNotEmpty()) { a.reorder(selected.toList()); selected.clear() }
-            "Remove all" -> { a.controller?.clearMediaItems(); selected.clear() }
+            "Remove all" -> a.clearPlaylist { selected.clear(); refreshList() }
         }
         refreshList()
     }
@@ -254,7 +232,7 @@ class PlayerPage(private val a: MainActivity) {
 
     private fun optsAction(s: String) {
         when (s) {
-            "New list" -> { a.controller?.clearMediaItems(); selected.clear(); setPlaylistVisible(true) }
+            "New list" -> a.clearPlaylist { selected.clear(); refreshList() }
             "Save list…" -> a.askText("Save playlist", "My playlist") { name ->
                 Library.savePlaylist(a, name, a.queue.toList()); a.toast("Saved \"$name\"")
             }
