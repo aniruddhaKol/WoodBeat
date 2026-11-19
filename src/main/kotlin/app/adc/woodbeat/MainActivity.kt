@@ -240,6 +240,7 @@ class MainActivity : Activity() {
                 override fun onPageSelected(position: Int) {
                     tabs.forEachIndexed { i, t -> t.lit = i == position }
                     updateStrip()
+                    if (firstTab == 0 && position == 0) playerPage.revealCurrent()   // back on Player: show what's playing
                 }
             })
         }

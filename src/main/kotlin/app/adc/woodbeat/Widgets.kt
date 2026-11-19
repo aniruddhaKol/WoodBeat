@@ -147,7 +147,21 @@ class WoodButton(ctx: Context, glyph: Int, private val square: Boolean = true) :
             badge.textSize = s * 0.22f
             canvas.drawText(it, width / 2f, height / 2f + s * 0.09f, badge)
         }
+        if (toggle) {
+            // Winamp-style toggle light: small square at the top-left of the button face
+            val l = s * 0.13f
+            val x = left + s * 0.17f; val y = top + s * 0.17f
+            rect.set(x, y, x + l, y + l)
+            led.color = if (lit) Colors.LCD_BRIGHT else 0xFF2A4A22.toInt()
+            led.setShadowLayer(if (lit) s * 0.06f else 0.01f, 0f, 0f, if (lit) 0xCC9CFF7A.toInt() else 0)
+            canvas.drawRoundRect(rect, l * 0.15f, l * 0.15f, led)
+            ledEdge.strokeWidth = maxOf(dp(1f), s * 0.018f)        // ivory frame so the light stands out on the wood
+            canvas.drawRoundRect(rect, l * 0.15f, l * 0.15f, ledEdge)
+        }
     }
+
+    private val led = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ledEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = Colors.IVORY }
 }
 
 /** Ready-made square icon button art (back, search, URL). Long-press shows its name. */
@@ -202,6 +216,10 @@ class Plaque(ctx: Context, text: String, private val sizeSp: Float = 13f) : View
     /** Secondary action (e.g. CANCEL): dimmed caption so the main button stands out. */
     var secondary = false
         set(v) { field = v; invalidate() }
+    /** Winamp-style toggle light at the left of the caption (same look as on shuffle / repeat). */
+    var led = false
+    private val ledFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ledEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = Colors.IVORY }
 
     init { isClickable = true; isFocusable = true }
 
@@ -228,6 +246,17 @@ class Plaque(ctx: Context, text: String, private val sizeSp: Float = 13f) : View
             else -> Colors.IVORY
         }
         var cx = width / 2f
+        if (led) {
+            val l = height * 0.26f
+            val x = dp(9f); val y = (height - l) / 2f
+            val r = RectF(x, y, x + l, y + l)
+            ledFill.color = if (lit) Colors.LCD_BRIGHT else 0xFF2A4A22.toInt()
+            ledFill.setShadowLayer(if (lit) l * 0.45f else 0.01f, 0f, 0f, if (lit) 0xCC9CFF7A.toInt() else 0)
+            canvas.drawRoundRect(r, l * 0.15f, l * 0.15f, ledFill)
+            ledEdge.strokeWidth = dp(1f)
+            canvas.drawRoundRect(r, l * 0.15f, l * 0.15f, ledEdge)
+            cx = (x + l + width) / 2f                              // caption centred in the space right of the light
+        }
         if (dropDown) {
             cx -= dp(9f)
             val s = dp(16f)

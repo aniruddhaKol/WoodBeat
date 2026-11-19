@@ -13,7 +13,7 @@ android {
         minSdk = 26 // Android 8.0
         targetSdk = 36
         versionCode = file("build-number.txt").readText().trim().toInt()
-        versionName = "0.1.2"
+        versionName = "0.1.3"
     }
 
     buildTypes {

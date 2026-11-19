@@ -27,8 +27,8 @@ class PlayerPage(private val a: MainActivity) {
     private val seek = WoodSlider(a, false).apply { showFill = true }
     private val volume = WoodSlider(a, false).apply { showFill = true }
     private val balance = WoodSlider(a, false).apply { snapCenter = true; centerTick = true }
-    private val eqToggle = Plaque(a, "EQ", 11f).apply { toggle = true }
-    private val plToggle = Plaque(a, "PL", 11f).apply { toggle = true }
+    private val plToggle = Plaque(a, "PL", 11f).apply { toggle = true; led = true }   // light shows the playlist is visible
+    private val playPause = WoodButton(a, R.drawable.glyph_play)
     private val shuffle = WoodButton(a, R.drawable.glyph_shuffle).apply { toggle = true }
     private val repeat = WoodButton(a, R.drawable.glyph_repeat).apply { toggle = true }
     private val list = RecyclerView(a)
@@ -90,11 +90,10 @@ class PlayerPage(private val a: MainActivity) {
         // Volume / balance / EQ / PL
         val vb = a.hbox()
         vb.addView(a.text(10f, Colors.IVORY, bold = true).apply { text = "VOL" }, lp(WRAP, WRAP))
-        vb.addView(volume, lp(0, a.dpi(30f), 2f).margins(a, 4f, 0f, 8f, 0f))
+        vb.addView(volume, lp(0, a.dpi(30f), 2.6f).margins(a, 4f, 0f, 8f, 0f))   // takes the old EQ button's space
         vb.addView(a.text(10f, Colors.IVORY, bold = true).apply { text = "BAL" }, lp(WRAP, WRAP))
         vb.addView(balance, lp(0, a.dpi(30f), 1.1f).margins(a, 4f, 0f, 6f, 0f))
-        vb.addView(eqToggle, lp(a.dpi(46f), a.dpi(30f)).margins(a, 0f, 0f, 4f, 0f))
-        vb.addView(plToggle, lp(a.dpi(46f), a.dpi(30f)))
+        vb.addView(plToggle, lp(a.dpi(56f), a.dpi(30f)))
         main.addView(vb, lp(MATCH, WRAP).margins(a, 0f, 8f, 0f, 4f))
         volume.value = Engine.prefs(a).getFloat("volume", 1f)
         volume.onChange = { v -> a.controller?.volume = v }
@@ -102,22 +101,20 @@ class PlayerPage(private val a: MainActivity) {
         balance.value = Engine.dsp.balance / 2f + 0.5f
         balance.onChange = { v -> Engine.dsp.balance = (v - 0.5f) * 2f }
         balance.onRelease = { Engine.saveDsp(a) }
-        eqToggle.setOnClickListener { a.showPage(1) }
-        eqToggle.setOnLongClickListener { a.eqPage.setEnabled(!Engine.dsp.enabled); true }
         plToggle.setOnClickListener { setPlaylistVisible(!plToggle.lit) }
 
         // Transport
         val tr = a.hbox()
         fun b(g: Int, click: () -> Unit) = WoodButton(a, g).apply { setOnClickListener { click() } }
+        // Play and Pause share one button (shows ⏸ while playing); Stop stays separate.
         val buttons = listOf(
             b(R.drawable.glyph_previous) { a.controller?.seekToPreviousMediaItem() },
-            b(R.drawable.glyph_play) { play() },
-            b(R.drawable.glyph_pause) { pause() },
+            playPause.apply { setOnClickListener { togglePlay() } },
             b(R.drawable.glyph_stop) { stop() },
             b(R.drawable.glyph_next) { a.controller?.seekToNextMediaItem() },
         )
         for (x in buttons) tr.addView(x, lp(0, WRAP, 1f).margins(a, 2f, 0f, 2f, 0f))
-        tr.addView(View(a), lp(a.dpi(8f), 1))
+        tr.addView(View(a), lp(a.dpi(10f), 1))     // gap: shuffle / repeat stay grouped on the right
         shuffle.setOnClickListener { a.controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
         repeat.setOnClickListener {
             a.controller?.let {
@@ -128,8 +125,8 @@ class PlayerPage(private val a: MainActivity) {
                 }
             }
         }
-        tr.addView(shuffle, lp(0, WRAP, 0.85f).margins(a, 2f, 0f, 2f, 0f))
-        tr.addView(repeat, lp(0, WRAP, 0.85f).margins(a, 2f, 0f, 2f, 0f))
+        tr.addView(shuffle, lp(0, WRAP, 1f).margins(a, 2f, 0f, 2f, 0f))
+        tr.addView(repeat, lp(0, WRAP, 1f).margins(a, 2f, 0f, 2f, 0f))
         main.addView(tr, lp(MATCH, WRAP).margins(a, 0f, 4f, 0f, 0f))
 
         val mainPanel = a.framed(main, raised = true, padDp = 12f)
@@ -142,6 +139,11 @@ class PlayerPage(private val a: MainActivity) {
         list.layoutManager = LinearLayoutManager(a)
         list.adapter = adapter
         list.addItemDecoration(RowLines(a))
+        list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                userScrolling = newState != RecyclerView.SCROLL_STATE_IDLE
+            }
+        })
         pl.addView(a.framed(list, raised = false, padDp = 9f), lp(MATCH, 0, 1f))
 
         val buttonsRow = a.hbox()
@@ -196,9 +198,11 @@ class PlayerPage(private val a: MainActivity) {
         c.play()
     }
 
-    private fun pause() {
+    /** The combined button: pause while playing (or buffering), otherwise play / resume. */
+    private fun togglePlay() {
         val c = a.controller ?: return
-        if (c.isPlaying) c.pause() else if (c.playbackState == Player.STATE_READY) c.play()
+        if (c.playWhenReady && c.playbackState != Player.STATE_IDLE && c.playbackState != Player.STATE_ENDED) c.pause()
+        else play()
     }
 
     private fun stop() {
@@ -250,7 +254,7 @@ class PlayerPage(private val a: MainActivity) {
 
     private fun optsAction(s: String) {
         when (s) {
-            "New list" -> { a.controller?.clearMediaItems(); selected.clear() }
+            "New list" -> { a.controller?.clearMediaItems(); selected.clear(); setPlaylistVisible(true) }
             "Save list…" -> a.askText("Save playlist", "My playlist") { name ->
                 Library.savePlaylist(a, name, a.queue.toList()); a.toast("Saved \"$name\"")
             }
@@ -283,6 +287,33 @@ class PlayerPage(private val a: MainActivity) {
     fun onConnected() {
         a.controller?.volume = volume.value
         refreshState()
+        revealCurrent()                        // coming back to the app: show what's playing
+    }
+
+    // ------------------------------------------------------------ keeping the playing song in view
+
+    private var userScrolling = false
+    private var lastIndex = -1
+
+    private fun isVisible(i: Int): Boolean {
+        val lm = list.layoutManager as LinearLayoutManager
+        val first = lm.findFirstCompletelyVisibleItemPosition()
+        return first != RecyclerView.NO_POSITION && i in first..lm.findLastCompletelyVisibleItemPosition()
+    }
+
+    /** Scrolls the playing song into view (a couple of rows below the top) unless it is visible or you're scrolling. */
+    fun revealCurrent() {
+        list.post {
+            val i = a.controller?.currentMediaItemIndex ?: return@post
+            if (i < 0 || i >= a.queue.size || userScrolling || isVisible(i)) return@post
+            (list.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(maxOf(i - 2, 0), 0)
+        }
+    }
+
+    /** Song changed: follow it only if the previous song was on screen (you were watching it). */
+    private fun onTrackChanged(previous: Int) {
+        if (previous < 0 || userScrolling || !isVisible(previous)) return
+        revealCurrent()
     }
 
     fun nowTitle(t: Track): String {
@@ -293,11 +324,14 @@ class PlayerPage(private val a: MainActivity) {
 
     fun refreshState() {
         val c = a.controller ?: return
+        val active = c.playWhenReady && c.playbackState != Player.STATE_IDLE && c.playbackState != Player.STATE_ENDED
+        playPause.setGlyph(if (active) R.drawable.glyph_pause else R.drawable.glyph_play)
         shuffle.lit = c.shuffleModeEnabled
         repeat.lit = c.repeatMode != Player.REPEAT_MODE_OFF
         repeat.badgeText = if (c.repeatMode == Player.REPEAT_MODE_ONE) "1" else null
-        eqToggle.lit = Engine.dsp.enabled
         spectrum.playing = c.isPlaying
+        val idx = c.currentMediaItemIndex
+        if (idx != lastIndex) { val prev = lastIndex; lastIndex = idx; onTrackChanged(prev) }
         adapter.notifyDataSetChanged()
         tick()
     }
