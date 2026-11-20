@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
@@ -46,6 +47,16 @@ class PlaybackService : MediaSessionService() {
             .build()
         player.volume = Engine.prefs(this).getFloat("volume", 1f)
         Engine.player = player
+        // Radio: pausing a live stream would resume from stale buffered audio, so a pause on a station acts as Stop;
+        // Play then reconnects to the live broadcast. Applies to the app, notification, headset and Bluetooth.
+        player.addListener(object : Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (playWhenReady || player.playbackState == Player.STATE_IDLE) return
+                val radio = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean("radio") == true ||
+                    player.isCurrentMediaItemLive
+                if (radio) player.stop()
+            }
+        })
 
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),

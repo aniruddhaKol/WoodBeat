@@ -49,17 +49,18 @@ class LibraryPage(private val a: MainActivity) {
         list.layoutManager = LinearLayoutManager(a)
         list.adapter = adapter
         list.addItemDecoration(RowLines(a))
-        view.addView(a.framed(list, raised = false, padDp = 9f), lp(MATCH, 0, 1f))
+        view.addView(a.framedList(list), lp(MATCH, 0, 1f))
         stack += Screen.Root
         render()
     }
 
-    fun reload() {
+    fun reload(showBusy: Boolean = false) {
         if (!a.hasAudioPermission() || loading) { render(); return }
         loading = true
+        if (showBusy) a.busy.show("Scanning your music…")
         a.io.execute {
             runCatching { Library.scan(a) }
-            a.runOnUiThread { loading = false; render() }
+            a.runOnUiThread { loading = false; if (showBusy) a.busy.hide(); render() }
         }
     }
 
@@ -223,10 +224,11 @@ class LibraryPage(private val a: MainActivity) {
 
     private fun search() {
         a.askSearch { q, india ->
-            a.toast("Searching…")
+            a.busy.show("Searching stations…")
             a.io.execute {
                 val found = runCatching { Radio.search(q, india) }
                 a.runOnUiThread {
+                    a.busy.hide()
                     found.onSuccess { open(Screen.Results(q, it)) }
                         .onFailure { a.toast("Search failed — check the internet connection") }
                 }

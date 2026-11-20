@@ -2,7 +2,7 @@
 
 Android music player and internet radio with a hand-crafted wooden look, in the spirit of the classic desktop players — by **Aniruddha DuttaChowdhury**.
 
-Version **0.1.4** (build 43). Package: `app.adc.woodbeat`. Android 8.0+ (phones and tablets).
+Version **0.1.5** (build 45). Package: `app.adc.woodbeat`. Android 8.0+ (phones and tablets).
 
 [Download APK](https://github.com/aniruddhaKol/WoodBeat/releases/latest)
 
@@ -24,7 +24,7 @@ Captured on the Android emulator, 19 November 2026.
 - **Playlist:** add files, folders or stream URLs; remove, crop, select; sort, reverse, randomize; save and load lists.
 - **Equalizer:** preamp + 10 bands (60 Hz – 16 kHz), response curve, built-in and custom presets, optional auto-load by genre.
 - **Library:** radio, DLNA (coming soon), all songs, folders, playlists, albums, artists, genres.
-- **Internet radio:** saved stations with a starter list of Indian Bengali stations, radio-browser.info search, Play URL.
+- **Internet radio:** saved stations with a starter list of Indian Bengali stations, radio-browser.info search, Play URL. Pausing a station stops it, so Play rejoins the live broadcast; shuffle and repeat are off while a station plays.
 - Background playback with notification, lock-screen and Bluetooth controls; opens audio files from file managers.
 
 ## Source layout

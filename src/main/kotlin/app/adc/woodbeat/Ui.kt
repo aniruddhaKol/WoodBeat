@@ -59,6 +59,19 @@ fun fitText(tv: TextView, baseDp: Float, minFraction: Float = 0.7f) {
     if (kotlin.math.abs(tv.textSize - px) > 0.5f) tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size)
 }
 
+/**
+ * A list inside the dark inset frame, clipped to rounded corners just inside the copper bead, so a highlighted
+ * first / last row follows the curve instead of covering the rim.
+ */
+fun Context.framedList(list: View): FrameLayout {
+    val radius = dp(7f)
+    list.outlineProvider = object : android.view.ViewOutlineProvider() {
+        override fun getOutline(v: View, o: android.graphics.Outline) = o.setRoundRect(0, 0, v.width, v.height, radius)
+    }
+    list.clipToOutline = true
+    return framed(list, raised = false, padDp = 11f)
+}
+
 /** Wooden frame around a child (raised panel or dark inset). */
 fun Context.framed(child: View, raised: Boolean, padDp: Float): FrameLayout = FrameLayout(this).apply {
     background = if (raised) Skin.raised(this@framed) else Skin.inset(this@framed)

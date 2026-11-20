@@ -44,6 +44,8 @@ class MainActivity : Activity() {
     private var future: ListenableFuture<MediaController>? = null
     val queue = ArrayList<Track>()
     val io = Executors.newSingleThreadExecutor()
+    /** Hourglass lightbox (same as PriKosh) for screen-blocking work: searching, reading folders, opening streams. */
+    val busy by lazy { Busy(this) }
     private val handler = Handler(Looper.getMainLooper())
     private val pending = ArrayList<Uri>()
 
@@ -317,7 +319,7 @@ class MainActivity : Activity() {
         woodMenu(anchor, listOf("Play URL…", "Rescan library")) {
             when (it) {
                 "Play URL…" -> askUrl(playNow = true)
-                else -> libraryPage.reload()
+                else -> libraryPage.reload(showBusy = true)
             }
         }
     }
@@ -375,10 +377,13 @@ class MainActivity : Activity() {
             REQ_FOLDER -> {
                 val tree = data.data ?: return
                 runCatching { contentResolver.takePersistableUriPermission(tree, flags) }
-                toast("Reading folder…")
+                busy.show("Reading folder…")
                 io.execute {
                     val uris = runCatching { Library.audioInTree(this, tree) }.getOrDefault(emptyList())
-                    runOnUiThread { if (uris.isEmpty()) toast("No audio files in that folder") else addUris(uris, play = false) }
+                    runOnUiThread {
+                        busy.hide()
+                        if (uris.isEmpty()) toast("No audio files in that folder") else addUris(uris, play = false)
+                    }
                 }
             }
         }
@@ -386,9 +391,10 @@ class MainActivity : Activity() {
 
     private fun addUris(uris: List<Uri>, play: Boolean) {
         if (uris.isEmpty()) return
+        busy.show(if (uris.size == 1) "Reading file…" else "Reading ${uris.size} files…")
         io.execute {
             val tracks = uris.map { Library.describe(this, it) }
-            runOnUiThread { if (play) playTracks(tracks) else enqueue(tracks) }
+            runOnUiThread { busy.hide(); if (play) playTracks(tracks) else enqueue(tracks) }
         }
     }
 
@@ -417,10 +423,12 @@ class MainActivity : Activity() {
 
     fun askUrl(playNow: Boolean) {
         askText("Play URL", hint = "http://… stream, .pls or .m3u", url = true) { url ->
+            busy.show("Opening stream…")
             io.execute {
                 val stream = Radio.unwrap(url)
                 val t = Track(stream, url.substringAfter("://").substringBefore('/'), radio = true)
                 runOnUiThread {
+                    busy.hide()
                     if (playNow) {
                         val c = controller ?: return@runOnUiThread
                         val start = c.mediaItemCount

@@ -141,7 +141,7 @@ class PlayerPage(private val a: MainActivity) {
                 userScrolling = newState != RecyclerView.SCROLL_STATE_IDLE
             }
         })
-        pl.addView(a.framed(list, raised = false, padDp = 9f), lp(MATCH, 0, 1f))
+        pl.addView(a.framedList(list), lp(MATCH, 0, 1f))
 
         val buttonsRow = a.hbox()
         val add = Plaque(a, "ADD", 12f); val rem = Plaque(a, "REM", 12f); val sel = Plaque(a, "SEL", 12f)
@@ -307,6 +307,10 @@ class PlayerPage(private val a: MainActivity) {
         shuffle.lit = c.shuffleModeEnabled
         repeat.lit = c.repeatMode != Player.REPEAT_MODE_OFF
         repeat.badgeText = if (c.repeatMode == Player.REPEAT_MODE_ONE) "1" else null
+        // A live station never ends, so shuffle / repeat can't do anything: show them disabled while one plays
+        val radioNow = a.queue.getOrNull(c.currentMediaItemIndex)?.radio == true || c.isCurrentMediaItemLive
+        shuffle.isEnabled = !radioNow
+        repeat.isEnabled = !radioNow
         spectrum.playing = c.isPlaying
         val idx = c.currentMediaItemIndex
         if (idx != lastIndex) { val prev = lastIndex; lastIndex = idx; onTrackChanged(prev) }

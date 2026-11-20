@@ -138,7 +138,7 @@ class WoodButton(ctx: Context, glyph: Int, private val square: Boolean = true) :
         val left = (width - s) / 2f; val top = (height - s) / 2f
         rect.set(left, top, left + s, top + s)
         paint.alpha = if (isEnabled) 255 else 120
-        canvas.drawBitmap(if (isPressed || (toggle && lit)) pressedBmp else normal, null, rect, paint)
+        canvas.drawBitmap(if (isPressed || (toggle && lit && isEnabled)) pressedBmp else normal, null, rect, paint)
         val g = s * 0.56f
         rect.set(width / 2f - g / 2, height / 2f - g / 2 + if (isPressed) s * 0.015f else 0f, width / 2f + g / 2, height / 2f + g / 2)
         paint.alpha = if (!isEnabled) 90 else if (toggle && !lit) 110 else 255
@@ -152,8 +152,11 @@ class WoodButton(ctx: Context, glyph: Int, private val square: Boolean = true) :
             val l = s * 0.13f
             val x = left + s * 0.17f; val y = top + s * 0.17f
             rect.set(x, y, x + l, y + l)
-            led.color = if (lit) Colors.LCD_BRIGHT else 0xFF2A4A22.toInt()
-            led.setShadowLayer(if (lit) s * 0.06f else 0.01f, 0f, 0f, if (lit) 0xCC9CFF7A.toInt() else 0)
+            val on = lit && isEnabled                              // disabled = light off, whatever the setting
+            led.color = if (on) Colors.LCD_BRIGHT else 0xFF2A4A22.toInt()
+            led.setShadowLayer(if (on) s * 0.06f else 0.01f, 0f, 0f, if (on) 0xCC9CFF7A.toInt() else 0)
+            led.alpha = if (isEnabled) 255 else 110
+            ledEdge.alpha = if (isEnabled) 255 else 90
             canvas.drawRoundRect(rect, l * 0.15f, l * 0.15f, led)
             ledEdge.strokeWidth = maxOf(dp(1f), s * 0.018f)        // ivory frame so the light stands out on the wood
             canvas.drawRoundRect(rect, l * 0.15f, l * 0.15f, ledEdge)
