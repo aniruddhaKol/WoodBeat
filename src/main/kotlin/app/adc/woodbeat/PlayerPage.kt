@@ -408,16 +408,28 @@ class PlayerPage(private val a: MainActivity) {
                     else -> 0
                 },
             )
-            h.row.setOnClickListener {
-                val p = h.bindingAdapterPosition
-                if (p < 0) return@setOnClickListener
-                if (selected.isNotEmpty()) toggleSel(p) else a.playAt(p)
-            }
-            h.row.setOnLongClickListener {
-                val p = h.bindingAdapterPosition
-                if (p >= 0) toggleSel(p)
-                true
-            }
+            // Tap: play (or toggle selection while selecting). Double tap: clear selection and play. Long press: select.
+            val gestures = android.view.GestureDetector(a, object : android.view.GestureDetector.SimpleOnGestureListener() {
+                override fun onDown(e: android.view.MotionEvent) = true
+                override fun onSingleTapConfirmed(e: android.view.MotionEvent): Boolean {
+                    val p = h.bindingAdapterPosition
+                    if (p >= 0) { if (selected.isNotEmpty()) toggleSel(p) else a.playAt(p) }
+                    return true
+                }
+                override fun onDoubleTap(e: android.view.MotionEvent): Boolean {
+                    val p = h.bindingAdapterPosition
+                    if (p < 0) return true
+                    if (selected.isNotEmpty()) { selected.clear(); refreshList() }
+                    a.playAt(p)
+                    return true
+                }
+                override fun onLongPress(e: android.view.MotionEvent) {
+                    val p = h.bindingAdapterPosition
+                    if (p >= 0) { h.row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS); toggleSel(p) }
+                }
+            })
+            @SuppressLint("ClickableViewAccessibility")
+            h.row.setOnTouchListener { _, e -> gestures.onTouchEvent(e) }
         }
     }
 
