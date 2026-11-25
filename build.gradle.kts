@@ -17,7 +17,10 @@ android {
     }
 
     buildTypes {
-        getByName("release") { isMinifyEnabled = false }
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug") // same key as earlier releases, so updates install over them
+        }
     }
 
     compileOptions {
