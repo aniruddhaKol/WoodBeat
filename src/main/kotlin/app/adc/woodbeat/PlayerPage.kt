@@ -408,12 +408,14 @@ class PlayerPage(private val a: MainActivity) {
                     else -> 0
                 },
             )
-            // Tap: play (or toggle selection while selecting). Double tap: clear selection and play. Long press: select.
+            // Tap: select/unselect a song; a station plays (unless selecting). Double tap: clear selection and play.
+            // Long press: select.
             val gestures = android.view.GestureDetector(a, object : android.view.GestureDetector.SimpleOnGestureListener() {
                 override fun onDown(e: android.view.MotionEvent) = true
                 override fun onSingleTapConfirmed(e: android.view.MotionEvent): Boolean {
                     val p = h.bindingAdapterPosition
-                    if (p >= 0) { if (selected.isNotEmpty()) toggleSel(p) else a.playAt(p) }
+                    if (p < 0) return true
+                    if (selected.isEmpty() && a.queue.getOrNull(p)?.radio == true) a.playAt(p) else toggleSel(p)
                     return true
                 }
                 override fun onDoubleTap(e: android.view.MotionEvent): Boolean {
